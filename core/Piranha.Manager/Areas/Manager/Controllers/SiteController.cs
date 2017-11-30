@@ -12,6 +12,7 @@ using Piranha.Areas.Manager.Models;
 using Piranha.Manager;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 
 namespace Piranha.Areas.Manager.Controllers
 {
@@ -39,27 +40,32 @@ namespace Piranha.Areas.Manager.Controllers
             return View("Edit", new SiteEditModel());
         }
 
-        [Route("manager/site/{id}")]
+        [Route("manager/site/{id:Guid}")]
         [Authorize(Policy = Permission.SitesEdit)]
-        public IActionResult Edit(string id) {
+        public IActionResult Edit(Guid id) {
             return View(SiteEditModel.GetById(api, id));
         }
 
         [Route("manager/site/save")]
         [Authorize(Policy = Permission.SitesSave)]
         public IActionResult Save(SiteEditModel model) {
-            if (model.Save(api)) {
-                SuccessMessage("The site has been saved.");
-                return RedirectToAction("Edit", new { id = model.Site.Id });
-            } else {
-                ErrorMessage("The site could not be saved.", false);
-                return View("Edit", model);
+            try {
+                if (model.Save(api)) {
+                    SuccessMessage("The site has been saved.");
+                    return RedirectToAction("Edit", new { id = model.Site.Id });
+                } else {
+                    ErrorMessage("The site could not be saved.", false);
+                    return View("Edit", model);
+                }
+            } catch (ArgumentException) {
+                ErrorMessage("The site could not be saved. Title is mandatory", false);
+                return View("Edit", model);                
             }
         }
 
-        [Route("manager/site/delete/{id}")]
+        [Route("manager/site/delete/{id:Guid}")]
         [Authorize(Policy = Permission.SitesDelete)]
-        public IActionResult Delete(string id) {
+        public IActionResult Delete(Guid id) {
             var site = api.Sites.GetById(id);
 
             if (site != null) {

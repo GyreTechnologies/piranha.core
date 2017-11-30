@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <Version>4.0.0-beta1</Version>
+    <Version>4.0.0-rc1</Version>
     <Company>Piranha CMS</Company>
     <AssemblyTitle>Piranha</AssemblyTitle>
   </PropertyGroup>
   <PropertyGroup>
     <PackageId>Piranha</PackageId>
-    <PackageVersion>4.0.0-beta1</PackageVersion>
+    <PackageVersion>4.0.0-rc1</PackageVersion>
     <Authors>Håkan Edling</Authors>
     <Description>Core package for Piranha CMS for NetStandard.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -16,12 +16,13 @@
     <Copyright>Copyright 2011-2017 (c) Håkan Edling</Copyright>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="6.1.1" />
-    <PackageReference Include="Dapper" Version="1.50.2" />
-    <PackageReference Include="Markdig" Version="0.13.1" />
+    <PackageReference Include="AutoMapper" Version="6.2.1" />
+    <PackageReference Include="Markdig" Version="0.14.6" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="2.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="2.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Data\Migrations\*.sql" />
+    <DotNetCliToolReference Include="Microsoft.EntityFrameworkCore.Tools.DotNet" Version="2.0.1" />
   </ItemGroup>
 </Project>

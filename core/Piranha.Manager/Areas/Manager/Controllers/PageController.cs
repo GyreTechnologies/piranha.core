@@ -11,6 +11,7 @@
 using Piranha.Manager;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,6 +20,8 @@ namespace Piranha.Areas.Manager.Controllers
     [Area("Manager")]
     public class PageController : ManagerAreaControllerBase
     {
+        private const string COOKIE_SELECTEDSITE = "PiranhaManager_SelectedSite";
+
         /// <summary>
         /// Default constructor.
         /// </summary>
@@ -31,34 +34,30 @@ namespace Piranha.Areas.Manager.Controllers
         [Route("manager/pages/{pageId?}")]
         [Authorize(Policy = Permission.Pages)]
         public ViewResult List(string pageId = null) {
-            return ListSite(null, pageId);
+            // Get the currently selected site from the request cookies
+            var siteId = Request.Cookies[COOKIE_SELECTEDSITE];
+            Guid? site = null;
+
+            if (!string.IsNullOrWhiteSpace(siteId))
+                site = new Guid(siteId);
+
+            return ListSite(site, pageId);
         }
 
         /// <summary>
         /// Gets the list view for the pages of the specified site.
         /// </summary>
-        [Route("manager/pages/site/{siteId}/{pageId?}")]
+        [Route("manager/pages/site/{siteId:Guid?}/{pageId?}")]
         [Authorize(Policy = Permission.Pages)]
-        public ViewResult ListSite(string siteId, string pageId = null) {
+        public ViewResult ListSite(Guid? siteId, string pageId = null) {
             var model = Models.PageListModel.Get(api, siteId, pageId);
             var defaultSite = api.Sites.GetDefault();
 
-            // TODO!
-            //
-            // This doesn't really work for multiple users but is
-            // rather a proof of context. Menus needs to be changed
-            // per user session rather than globally.
-            Piranha.Manager.Menu
-                .Items["Content"]
-                .Items["Pages"]
-                .Action = string.IsNullOrEmpty(siteId) ? "List" : "ListSite";
-            Piranha.Manager.Menu
-                .Items["Content"]
-                .Items["Pages"]
-                .Params = new {
-                    pageId = "",
-                    siteId = model.SiteId != defaultSite.Id ? model.SiteId : ""
-                };
+            // Store a cookie on our currently selected site
+            if (siteId.HasValue)
+                Response.Cookies.Append(COOKIE_SELECTEDSITE, siteId.ToString());
+            else Response.Cookies.Delete(COOKIE_SELECTEDSITE); 
+
             return View("List", model);
         }
 
@@ -66,9 +65,9 @@ namespace Piranha.Areas.Manager.Controllers
         /// Gets the edit view for a page.
         /// </summary>
         /// <param name="id">The page id</param>
-        [Route("manager/page/{id}")]
+        [Route("manager/page/{id:Guid}")]
         [Authorize(Policy = Permission.PagesEdit)]
-        public IActionResult Edit(string id) {
+        public IActionResult Edit(Guid id) {
             return View(Models.PageEditModel.GetById(api, id));
         }
 
@@ -77,9 +76,9 @@ namespace Piranha.Areas.Manager.Controllers
         /// </summary>
         /// <param name="type">The page type id</param>
         /// <param name="siteId">The optional site id</param>
-        [Route("manager/page/add/{type}/{siteId?}")]
+        [Route("manager/page/add/{type}/{siteId:Guid?}")]
         [Authorize(Policy = Permission.PagesAdd)]
-        public IActionResult Add(string type, string siteId = null) {
+        public IActionResult Add(string type, Guid? siteId = null) {
             var sitemap = api.Sites.GetSitemap(siteId, onlyPublished: false);
             var model = Models.PageEditModel.Create(api, type, siteId);
             model.SortOrder = sitemap.Count;
@@ -94,8 +93,8 @@ namespace Piranha.Areas.Manager.Controllers
         /// <param name="sortOrder">The sort order</param>
         /// <param name="parentId">The parent id</param>
         /// <param name="siteId">The optional site id</param>
-        [Route("manager/page/add/{type}/{sortOrder:int}/{parentId?}/{siteId?}")]
-        public IActionResult AddAt(string type, int sortOrder, string parentId = null, string siteId = null) {
+        [Route("manager/page/add/{type}/{sortOrder:int}/{parentId:Guid?}/{siteId:Guid?}")]
+        public IActionResult AddAt(string type, int sortOrder, Guid? parentId = null, Guid? siteId = null) {
             var model = Models.PageEditModel.Create(api, type, siteId);
 
             model.ParentId = parentId;
@@ -112,12 +111,19 @@ namespace Piranha.Areas.Manager.Controllers
         [Route("manager/page/save")]
         [Authorize(Policy = Permission.PagesSave)]
         public IActionResult Save(Models.PageEditModel model) {
+            // Validate
+            if (string.IsNullOrWhiteSpace(model.Title)) {
+                ErrorMessage("The page could not be saved. Title is mandatory", false);
+                return View("Edit", model.Refresh(api));                
+            }
+
+            // Save
             if (model.Save(api)) {
                 SuccessMessage("The page has been saved.");
                 return RedirectToAction("Edit", new { id = model.Id });
             } else {
                 ErrorMessage("The page could not be saved.", false);
-                return View("Edit", model);
+                return View("Edit", model.Refresh(api));
             }
         }
 
@@ -180,9 +186,9 @@ namespace Piranha.Areas.Manager.Controllers
         /// Deletes the page with the given id.
         /// </summary>
         /// <param name="id">The unique id</param>
-        [Route("manager/page/delete/{id}")]
+        [Route("manager/page/delete/{id:Guid}")]
         [Authorize(Policy = Permission.PagesDelete)]
-        public IActionResult Delete(string id) {
+        public IActionResult Delete(Guid id) {
             api.Pages.Delete(id);
             SuccessMessage("The page has been deleted");
             return RedirectToAction("List");
@@ -216,8 +222,8 @@ namespace Piranha.Areas.Manager.Controllers
         }
 
         #region Private methods
-        private bool MovePage(Models.PageStructureModel.PageStructureItem page, int sortOrder = 1, string parentId = null) {
-            var model = api.Pages.GetById(page.Id);
+        private bool MovePage(Models.PageStructureModel.PageStructureItem page, int sortOrder = 1, Guid? parentId = null) {
+            var model = api.Pages.GetById(new Guid(page.Id));
 
             if (model != null) {
                 if (model.ParentId != parentId || model.SortOrder != sortOrder) {
@@ -229,7 +235,7 @@ namespace Piranha.Areas.Manager.Controllers
                 }
 
                 for (var n = 0; n < page.Children.Count; n++) {
-                    var moved = MovePage(page.Children[n], n, page.Id);
+                    var moved = MovePage(page.Children[n], n, new Guid(page.Id));
 
                     if (moved)
                         return true;
