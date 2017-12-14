@@ -1,4 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+  <PropertyGroup Label="Globals">
+    <SccProjectName>%24/LCI Exchange Platform/Dev/Source/LXP Platform/Source/PiranhaCms/piranha.core/core/Piranha.AspNetCore</SccProjectName>
+    <SccProvider>{4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}</SccProvider>
+    <SccAuxPath>https://gyretech.visualstudio.com</SccAuxPath>
+    <SccLocalPath>.</SccLocalPath>
+  </PropertyGroup>
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Version>4.0.0</Version>
